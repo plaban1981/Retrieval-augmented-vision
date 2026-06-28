@@ -1,0 +1,23 @@
+# PixelRAG cache — large files, don't commit
+data/tiles/*.png
+data/embeddings/embeddings.npy
+data/embeddings/metadata.json
+data/index/index.faiss
+data/index/metadata.json
+data/tiles/meta.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+notebook_executed.ipynb
+
+# Streamlit
+.streamlit/
+
+# Superpowers brainstorm sessions
+.superpowers/
