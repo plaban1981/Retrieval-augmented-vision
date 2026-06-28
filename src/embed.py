@@ -63,18 +63,41 @@ def _encode(model, processor, device, *, image=None, text=None):
     Exactly one of image/text must be provided.
     Returns an L2-normalised float32 numpy vector.
     """
+    # Qwen3-VL is a decoder model: processor needs input_ids (from text) alongside
+    # pixel_values (from images). Calling processor(images=...) alone produces no
+    # input_ids, which causes "must specify exactly one of input_ids or inputs_embeds".
+    # apply_chat_template generates the proper token sequence with image placeholders.
     if image is not None:
-        inputs = processor(images=image, return_tensors="pt").to(device)
-    else:
+        messages = [
+            {"role": "user", "content": [{"type": "image", "image": image}]}
+        ]
+        text_input = processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=False
+        )
         inputs = processor(
-            text=text, return_tensors="pt",
+            text=[text_input], images=[image], return_tensors="pt"
+        ).to(device)
+    else:
+        messages = [
+            {"role": "user", "content": [{"type": "text", "text": text}]}
+        ]
+        text_input = processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=False
+        )
+        inputs = processor(
+            text=[text_input], return_tensors="pt",
             padding=True, truncation=True, max_length=512,
         ).to(device)
 
     with torch.no_grad():
         out = model(**inputs, output_hidden_states=True)
 
-    if hasattr(out, "pooler_output") and out.pooler_output is not None:
+    # Decoder model: use last token of last hidden state as the embedding vector.
+    if hasattr(out, "last_hidden_state") and out.last_hidden_state is not None:
+        vec = out.last_hidden_state[:, -1, :].squeeze()
+    elif hasattr(out, "hidden_states") and out.hidden_states:
+        vec = out.hidden_states[-1][:, -1, :].squeeze()
+    elif hasattr(out, "pooler_output") and out.pooler_output is not None:
         vec = out.pooler_output.squeeze()
     else:
         vec = out.last_hidden_state.mean(dim=1).squeeze()

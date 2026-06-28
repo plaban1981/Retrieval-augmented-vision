@@ -43,6 +43,18 @@ with st.sidebar:
     lora_badge = st.empty()
     index_status = st.empty()
 
+    st.markdown("**Anthropic API Key**")
+    api_key_input = st.text_input(
+        "Anthropic API Key",
+        value=st.session_state.get("api_key", os.environ.get("ANTHROPIC_API_KEY", "")),
+        type="password",
+        placeholder="sk-ant-...",
+        label_visibility="collapsed",
+    )
+    if api_key_input:
+        st.session_state.api_key = api_key_input
+    st.divider()
+
     top_k = st.slider("Top-K tiles", min_value=1, max_value=5, value=3)
     st.divider()
 
@@ -128,9 +140,9 @@ for msg in st.session_state.chat_history:
 question = st.chat_input("Ask a question about the paper…")
 
 if question:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = st.session_state.get("api_key") or os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        st.error("❌ Set ANTHROPIC_API_KEY as an environment variable and restart.")
+        st.error("❌ Enter your Anthropic API key in the sidebar.")
         st.stop()
 
     with st.chat_message("user"):
